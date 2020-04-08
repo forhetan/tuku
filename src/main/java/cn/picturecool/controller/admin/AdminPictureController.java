@@ -36,29 +36,31 @@ public class AdminPictureController {
     @PostMapping("/admin/picture")
     public RespBean uploadNewPicture(@RequestParam("file") MultipartFile file,
                                      @CurrentAdmin AdminDTO adminDTO) throws IOException {
+        if(adminDTO!=null){
+            PictureBeanHelper pictureBeanHelper;
+            if (FilePath.isImage(file.getContentType())) {
+                pictureBeanHelper = PictureBeanHelper.init(file.getInputStream());
 
-        PictureBeanHelper pictureBeanHelper;
-        if (FilePath.isImage(file.getContentType())) {
-            pictureBeanHelper = PictureBeanHelper.init(file.getInputStream());
+                AdminPictureDTO adminPictureDTO = AdminPictureDTO.builder().uniqueHash(pictureBeanHelper.getUniqueHash())
+                        .hammingHash(pictureBeanHelper.getMsgHash())
+                        .fileHash(pictureBeanHelper.getFileHash())
+                        .filePath(pictureBeanHelper.getBasePath() + File.separator
+                                + pictureBeanHelper.getUniqueHash() + "_admin")
+                        .picturePixel(pictureBeanHelper.getPicturePixel())
+                        .fileSize(file.getSize())
+                        .fileSuffix(FilePath.getSuffix(file.getContentType()))
+                        .build();
 
-            AdminPictureDTO adminPictureDTO = AdminPictureDTO.builder().uniqueHash(pictureBeanHelper.getUniqueHash())
-                    .hammingHash(pictureBeanHelper.getMsgHash())
-                    .fileHash(pictureBeanHelper.getFileHash())
-                    .filePath(pictureBeanHelper.getBasePath() + File.separator
-                            + pictureBeanHelper.getUniqueHash() + "_admin")
-                    .picturePixel(pictureBeanHelper.getPicturePixel())
-                    .fileSize(file.getSize())
-                    .fileSuffix(FilePath.getSuffix(file.getContentType()))
-                    .build();
+                PictureBeanHelper.createFolders(pictureBeanHelper.getBasePath());
+                file.transferTo(new File(adminPictureDTO.getFilePath()
+                        + "." + FilePath.getSuffix(file.getContentType())));
 
-            PictureBeanHelper.createFolders(pictureBeanHelper.getBasePath());
-            file.transferTo(new File(adminPictureDTO.getFilePath()
-                    + "." + FilePath.getSuffix(file.getContentType())));
-
-            adminPictureService.insertMain(adminPictureDTO);
-            return RespBean.ok("", adminPictureDTO);
+                adminPictureService.insertMain(adminPictureDTO);
+                return RespBean.ok("", adminPictureDTO);
+            }
+            return RespBean.error("");
         }
-        return RespBean.error("");
+        return RespBean.error("无访问权限！");
     }
 
     @CrossOrigin
@@ -67,24 +69,28 @@ public class AdminPictureController {
     public RespBean deletePicture(@CurrentAdmin AdminDTO adminDTO,
                                   @PathVariable("uniqueHash") String uniqueHash) {
 
-
-        if (adminPictureService.findPictureByUniqueHash(uniqueHash) != null) {
-            adminPictureService.deleteByUniqueHash(uniqueHash);
-            return RespBean.ok("");
+        if (adminDTO!=null){
+            if (adminPictureService.findPictureByUniqueHash(uniqueHash) != null) {
+                adminPictureService.deleteByUniqueHash(uniqueHash);
+                return RespBean.ok("");
+            }
+            return RespBean.error("");
         }
-        return RespBean.error("");
+        return RespBean.error("无访问权限！");
     }
 
     @CrossOrigin
     @Admin
     @DeleteMapping("/admin/picture")
     public RespBean deleteAll(@CurrentAdmin AdminDTO adminDTO) {
-
-        List<AdminPictureDTO> adminPictureDTOS = adminPictureService.selectAll();
-        for (AdminPictureDTO adminPictureDTO : adminPictureDTOS) {
-            adminPictureService.deleteByUniqueHash(adminPictureDTO.getUniqueHash());
+        if (adminDTO!=null){
+            List<AdminPictureDTO> adminPictureDTOS = adminPictureService.selectAll();
+            for (AdminPictureDTO adminPictureDTO : adminPictureDTOS) {
+                adminPictureService.deleteByUniqueHash(adminPictureDTO.getUniqueHash());
+            }
+            return RespBean.ok("");
         }
-        return RespBean.ok("");
+        return RespBean.error("无访问权限！");
     }
 
 }
